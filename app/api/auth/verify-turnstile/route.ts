@@ -10,9 +10,15 @@ export async function POST(req: NextRequest) {
     if (!token)
       return NextResponse.json({ author: "Snaptok", success: false, error: "Token Turnstile tidak ditemukan." }, { status: 400 });
 
-    // Skip verifikasi saat dev jika dikonfigurasi
-    if (TURNSTILE.skipVerify)
+    // Skip verifikasi jika dikonfigurasi atau secretKey belum diisi
+    const isDummyKey = !TURNSTILE.secretKey ||
+      TURNSTILE.secretKey.includes("_SECRET") ||
+      TURNSTILE.secretKey.length < 20;
+
+    if (TURNSTILE.skipVerify || isDummyKey) {
+      console.log("[turnstile] skip verify — dev mode atau key belum dikonfigurasi");
       return NextResponse.json({ author: "Snaptok", success: true });
+    }
 
     // Ambil IP user untuk keamanan ekstra
     const ip =

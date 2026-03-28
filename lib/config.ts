@@ -10,7 +10,7 @@ export const SMTP = {
   secure: false,
   user:   "otp.snaptok@gmail.com",
   pass:   "wnbe wvhw egll kizo", // Gmail App Password
-  from:   "Snaptok <otp.snaptok@gmail.com>",
+  from:   "Snaptok <defandryannn@gmail.com>",
 };
 
 export const JWT = {

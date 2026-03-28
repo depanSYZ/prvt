@@ -39,6 +39,10 @@ function Slot(props: SlotProps) {
 
 type Step = "form" | "otp" | "reset_request" | "reset_otp" | "reset_newpass";
 
+// Ambil siteKey dari env — NEXT_PUBLIC_ aman di browser
+// Set NEXT_PUBLIC_TURNSTILE_SITE_KEY di .env.local atau environment variable hosting
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
+
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
@@ -102,6 +106,8 @@ function LoginForm() {
 
   // ── Verify Turnstile token di server sebelum submit ───────────────────────
   const verifyTurnstileOnServer = async (): Promise<boolean> => {
+    // Jika siteKey tidak dikonfigurasi, skip verifikasi
+    if (!TURNSTILE_SITE_KEY) return true;
     if (!turnstileToken) { setError("Selesaikan CAPTCHA terlebih dahulu."); return false; }
     try {
       const res  = await fetch("/api/auth/verify-turnstile", {
@@ -319,10 +325,11 @@ function LoginForm() {
                   </div>
                 </div>
 
-                {/* ── Cloudflare Turnstile ── */}
-                <div className="space-y-2">
+                {/* ── Cloudflare Turnstile ── hanya tampil jika siteKey dikonfigurasi */}
+                {!!TURNSTILE_SITE_KEY && <div className="space-y-2">
                   <div className="rounded-xl border border-border bg-muted/20 p-3">
                     <TurnstileWidget
+                      siteKey={TURNSTILE_SITE_KEY}
                       onVerify={handleTurnstileVerify}
                       onExpire={handleTurnstileExpire}
                       onError={handleTurnstileError}
@@ -344,7 +351,7 @@ function LoginForm() {
                       )}
                     </div>
                   </div>
-                </div>
+                </div>}
 
                 {error && (
                   <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3">
@@ -355,11 +362,11 @@ function LoginForm() {
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={loading || !turnstileVerified}
+                  disabled={loading || (!!TURNSTILE_SITE_KEY && !turnstileVerified)}
                 >
                   {loading
                     ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Memverifikasi…</>
-                    : !turnstileVerified
+                    : (TURNSTILE_SITE_KEY && !turnstileVerified)
                       ? <><ShieldAlert className="mr-2 h-4 w-4" />Selesaikan CAPTCHA</>
                       : "Login"}
                 </Button>
@@ -601,9 +608,8 @@ function LoginForm() {
           Dengan login, kamu menyetujui{" "}
           <Link href="/privacy" className="text-primary/70 hover:text-primary hover:underline">Kebijakan Privasi</Link>
           {", "}
-          <Link href="/guide" className="text-primary/70 hover:text-primary hover:underline">Syarat & Ketentuan TikTok</Link>
-          {" "}dan{" "}
-          <Link href="/douyin/privacy" className="text-primary/70 hover:text-primary hover:underline">Syarat & Ketentuan Douyin</Link>
+          <Link href="/terms" className="text-primary/70 hover:text-primary hover:underline">Syarat & Ketentuan</Link>
+          
           {" "}kami.
         </p>
       </div>

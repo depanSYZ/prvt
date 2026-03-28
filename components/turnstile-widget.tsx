@@ -1,96 +1,93 @@
 "use client";
 // components/turnstile-widget.tsx
-// Cloudflare Turnstile widget — load via CDN script, tanpa package tambahan
+// Cloudflare Turnstile — load via CDN, TANPA import dari lib/config
+// siteKey dibaca dari props atau env NEXT_PUBLIC_ agar tidak expose secret key ke browser
+
 import { useEffect, useRef, useCallback } from "react";
-import { TURNSTILE } from "@/lib/config";
 
 interface TurnstileWidgetProps {
-  onVerify: (token: string) => void;
+  siteKey:   string;                    // ← terima dari props, bukan import config
+  onVerify:  (token: string) => void;
   onExpire?: () => void;
-  onError?: () => void;
-  theme?: "light" | "dark" | "auto";
-  size?: "normal" | "compact";
+  onError?:  () => void;
+  theme?:    "light" | "dark" | "auto";
+  size?:     "normal" | "compact";
 }
 
-// Extend Window type untuk Turnstile global
 declare global {
   interface Window {
     turnstile?: {
-      render: (container: string | HTMLElement, options: Record<string, unknown>) => string;
-      reset:  (widgetId?: string) => void;
-      remove: (widgetId?: string) => void;
+      render:  (el: HTMLElement, opts: Record<string, unknown>) => string;
+      reset:   (id?: string) => void;
+      remove:  (id?: string) => void;
     };
     onTurnstileLoad?: () => void;
   }
 }
 
 export function TurnstileWidget({
-  onVerify,
-  onExpire,
-  onError,
-  theme = "auto",
-  size  = "normal",
+  siteKey, onVerify, onExpire, onError,
+  theme = "auto", size = "normal",
 }: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef  = useRef<string | null>(null);
+  const renderedRef  = useRef(false);
 
-  const render = useCallback(() => {
-    if (!containerRef.current || !window.turnstile) return;
-    // Hapus widget lama jika ada
+  const renderWidget = useCallback(() => {
+    if (!containerRef.current || !window.turnstile || renderedRef.current) return;
     if (widgetIdRef.current) {
       try { window.turnstile.remove(widgetIdRef.current); } catch { /* ignore */ }
+      widgetIdRef.current = null;
     }
+    renderedRef.current = true;
     widgetIdRef.current = window.turnstile.render(containerRef.current, {
-      sitekey:           TURNSTILE.siteKey,
+      sitekey:            siteKey,
       theme,
       size,
-      callback:          (token: string) => onVerify(token),
-      "expired-callback": () => { widgetIdRef.current = null; onExpire?.(); },
-      "error-callback":  () => { widgetIdRef.current = null; onError?.();  },
+      callback:           (token: string)  => onVerify(token),
+      "expired-callback": ()               => { renderedRef.current = false; widgetIdRef.current = null; onExpire?.(); },
+      "error-callback":   ()               => { renderedRef.current = false; widgetIdRef.current = null; onError?.();  },
     });
-  }, [theme, size, onVerify, onExpire, onError]);
+  }, [siteKey, theme, size, onVerify, onExpire, onError]);
 
   useEffect(() => {
     const SCRIPT_ID = "cf-turnstile-script";
 
-    // Jika script sudah ada dan turnstile sudah ready, langsung render
     if (window.turnstile) {
-      render();
+      // Script sudah loaded sebelumnya
+      renderWidget();
       return;
     }
 
-    // Jika script sudah ada tapi turnstile belum ready, tunggu callback
     if (document.getElementById(SCRIPT_ID)) {
+      // Script sedang loading, chain ke callback
       const prev = window.onTurnstileLoad;
-      window.onTurnstileLoad = () => { prev?.(); render(); };
+      window.onTurnstileLoad = () => { prev?.(); renderWidget(); };
       return;
     }
 
-    // Tambahkan script baru
-    window.onTurnstileLoad = render;
-    const script = document.createElement("script");
-    script.id    = SCRIPT_ID;
-    script.src   = "https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad&render=explicit";
-    script.async = true;
-    script.defer = true;
+    // Inject script baru
+    window.onTurnstileLoad = renderWidget;
+    const script   = document.createElement("script");
+    script.id      = SCRIPT_ID;
+    script.src     = "https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad&render=explicit";
+    script.async   = true;
+    script.defer   = true;
+    script.onerror = () => { onError?.(); };
     document.head.appendChild(script);
 
     return () => {
       if (widgetIdRef.current && window.turnstile) {
         try { window.turnstile.remove(widgetIdRef.current); } catch { /* ignore */ }
         widgetIdRef.current = null;
+        renderedRef.current = false;
       }
     };
-  }, [render]);
+  }, [renderWidget, onError]);
 
-  return (
-    <div ref={containerRef} className="flex justify-center" />
-  );
+  return <div ref={containerRef} className="flex justify-center min-h-[65px]" />;
 }
 
-/** Reset widget dari luar (misal setelah error) */
-export function resetTurnstile() {
-  if (window.turnstile) {
-    try { window.turnstile.reset(); } catch { /* ignore */ }
-  }
+export function resetTurnstile(widgetId?: string) {
+  try { window.turnstile?.reset(widgetId); } catch { /* ignore */ }
 }

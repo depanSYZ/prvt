@@ -105,7 +105,7 @@ export function DouyinFooter() {
             <strong className="text-red-200 inline-flex items-center gap-1">
               <FontAwesomeIcon icon={faCircleInfo} className="w-3" /> Disclaimer:
             </strong>{" "}
-            {t(tr.footer.disclaimer_douyin, lang)}
+            {t(tr.footer.disclaimer, lang)}
           </div>
           <p className="text-xs text-red-400">
             &copy; {new Date().getFullYear()} SnapYin by Snaptok. {t(tr.footer.rights, lang)}

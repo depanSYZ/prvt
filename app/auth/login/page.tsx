@@ -1,13 +1,14 @@
 "use client";
-import { useState, Suspense } from "react";
+import { useState, Suspense, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { PlayCircle, Loader2, Eye, EyeOff, Mail, ArrowLeft, Check, KeyRound, ShieldCheck, RefreshCw } from "lucide-react";
+import { PlayCircle, Loader2, Eye, EyeOff, Mail, ArrowLeft, Check, KeyRound, ShieldCheck, RefreshCw, ShieldAlert } from "lucide-react";
 import { OTPInput, SlotProps } from "input-otp";
 import { ToastContainer, useToast } from "@/components/toast-notification";
+import { TurnstileWidget, resetTurnstile } from "@/components/turnstile-widget";
 
 function Slot(props: SlotProps) {
   return (
@@ -39,35 +40,58 @@ function Slot(props: SlotProps) {
 type Step = "form" | "otp" | "reset_request" | "reset_otp" | "reset_newpass";
 
 function LoginForm() {
-  const router  = useRouter();
-  const params  = useSearchParams();
-  const from    = params.get("from") ?? "/docs";
+  const router = useRouter();
+  const params = useSearchParams();
+  const from   = params.get("from") ?? "/docs";
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState("");
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState("");
 
-  const [step, setStep]           = useState<Step>("form");
-  const [otpToken, setOtpToken]   = useState("");
-  const [maskedEmail, setMasked]  = useState("");
-  const [otp, setOtp]             = useState("");
-  const [otpLoading, setOtpLoad]  = useState(false);
-  const [otpError, setOtpError]   = useState("");
-  const [resendCd, setResendCd]   = useState(0);
+  // Turnstile state
+  const [turnstileToken,    setTurnstileToken]    = useState<string | null>(null);
+  const [turnstileVerified, setTurnstileVerified] = useState(false);
+  const [turnstileError,    setTurnstileError]    = useState(false);
+
+  const [step,        setStep]       = useState<Step>("form");
+  const [otpToken,    setOtpToken]   = useState("");
+  const [maskedEmail, setMasked]     = useState("");
+  const [otp,         setOtp]        = useState("");
+  const [otpLoading,  setOtpLoad]    = useState(false);
+  const [otpError,    setOtpError]   = useState("");
+  const [resendCd,    setResendCd]   = useState(0);
 
   const [resetUsername, setResetUsername] = useState("");
-  const [resetLoading, setResetLoading]   = useState(false);
-  const [resetError, setResetError]       = useState("");
-  const [resetOtp, setResetOtp]           = useState("");
-  const [resetToken, setResetToken]       = useState("");
-  const [resetMasked, setResetMasked]     = useState("");
-  const [newPassword, setNewPassword]     = useState("");
-  const [showNewPass, setShowNewPass]     = useState(false);
-  const [resetSuccess, setResetSuccess]   = useState(false);
+  const [resetLoading,  setResetLoading]  = useState(false);
+  const [resetError,    setResetError]    = useState("");
+  const [resetOtp,      setResetOtp]      = useState("");
+  const [resetToken,    setResetToken]    = useState("");
+  const [resetMasked,   setResetMasked]   = useState("");
+  const [newPassword,   setNewPassword]   = useState("");
+  const [showNewPass,   setShowNewPass]   = useState(false);
+  const [resetSuccess,  setResetSuccess]  = useState(false);
 
   const { toasts, addToast, removeToast } = useToast();
+
+  // ── Turnstile callbacks ───────────────────────────────────────────────────
+  const handleTurnstileVerify = useCallback((token: string) => {
+    setTurnstileToken(token);
+    setTurnstileVerified(true);
+    setTurnstileError(false);
+  }, []);
+
+  const handleTurnstileExpire = useCallback(() => {
+    setTurnstileToken(null);
+    setTurnstileVerified(false);
+  }, []);
+
+  const handleTurnstileError = useCallback(() => {
+    setTurnstileToken(null);
+    setTurnstileVerified(false);
+    setTurnstileError(true);
+  }, []);
 
   const startCountdown = (setter: (v: number) => void) => {
     setter(60);
@@ -76,9 +100,33 @@ function LoginForm() {
     }, 1000);
   };
 
+  // ── Verify Turnstile token di server sebelum submit ───────────────────────
+  const verifyTurnstileOnServer = async (): Promise<boolean> => {
+    if (!turnstileToken) { setError("Selesaikan CAPTCHA terlebih dahulu."); return false; }
+    try {
+      const res  = await fetch("/api/auth/verify-turnstile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: turnstileToken }),
+      });
+      const json = await res.json();
+      if (!json.success) { setError(json.error ?? "Verifikasi CAPTCHA gagal. Coba lagi."); resetTurnstile(); setTurnstileToken(null); setTurnstileVerified(false); return false; }
+      return true;
+    } catch {
+      setError("Gagal memverifikasi CAPTCHA. Coba lagi.");
+      return false;
+    }
+  };
+
+  // ── Form submit (step 1: kirim OTP) ──────────────────────────────────────
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true); setError("");
+    setError("");
+
+    const captchaOk = await verifyTurnstileOnServer();
+    if (!captchaOk) return;
+
+    setLoading(true);
     try {
       const res  = await fetch("/api/auth/send-otp", {
         method: "POST",
@@ -86,7 +134,7 @@ function LoginForm() {
         body: JSON.stringify({ type: "login", username, password }),
       });
       const json = await res.json();
-      if (!json.success) { setError(json.error); return; }
+      if (!json.success) { setError(json.error); resetTurnstile(); setTurnstileToken(null); setTurnstileVerified(false); return; }
       setOtpToken(json.token);
       setMasked(json.maskedEmail);
       setStep("otp");
@@ -99,10 +147,20 @@ function LoginForm() {
     if (otp.length !== 6) { setOtpError("Masukkan 6 digit kode."); return; }
     setOtpLoad(true); setOtpError("");
     try {
+      // Kumpulkan fingerprint browser untuk session tracking
+      let fingerprintHash = "unknown";
+      let deviceId = "unknown";
+      try {
+        const { collectFingerprint, hashFingerprint } = await import("@/lib/fingerprint");
+        const fp = collectFingerprint();
+        fingerprintHash = await hashFingerprint(fp);
+        deviceId = fp.deviceId;
+      } catch { /* optional, jangan gagalkan login */ }
+
       const res  = await fetch("/api/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: otpToken, otp }),
+        body: JSON.stringify({ token: otpToken, otp, fingerprintHash, deviceId }),
       });
       const json = await res.json();
       if (!json.success) { setOtpError(json.error); return; }
@@ -206,6 +264,8 @@ function LoginForm() {
     <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4 py-8">
       <ToastContainer toasts={toasts} removeToast={removeToast} />
       <div className="w-full max-w-md space-y-6">
+
+        {/* Logo */}
         <div className="text-center">
           <Link href="/" className="inline-flex items-center gap-2 text-2xl font-bold">
             <PlayCircle className="h-8 w-8 text-primary" />
@@ -214,7 +274,7 @@ function LoginForm() {
           <p className="mt-2 text-sm text-muted-foreground">Login untuk akses API Docs</p>
         </div>
 
-        {/* STEP 1: Form Login */}
+        {/* ── STEP 1: Form Login ── */}
         {step === "form" && (
           <Card className="border-border shadow-lg">
             <CardHeader className="pb-4">
@@ -225,8 +285,13 @@ function LoginForm() {
               <form onSubmit={handleFormSubmit} className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">Username</label>
-                  <Input value={username} onChange={(e) => setUsername(e.target.value)}
-                    placeholder="username" autoComplete="username" required />
+                  <Input
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="username"
+                    autoComplete="username"
+                    required
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
@@ -238,24 +303,65 @@ function LoginForm() {
                     </button>
                   </div>
                   <div className="relative">
-                    <Input type={showPass ? "text" : "password"} value={password}
+                    <Input
+                      type={showPass ? "text" : "password"}
+                      value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••" autoComplete="current-password" required className="pr-10" />
+                      placeholder="••••••••"
+                      autoComplete="current-password"
+                      required
+                      className="pr-10"
+                    />
                     <button type="button" onClick={() => setShowPass(!showPass)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                       {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
                 </div>
+
+                {/* ── Cloudflare Turnstile ── */}
+                <div className="space-y-2">
+                  <div className="rounded-xl border border-border bg-muted/20 p-3">
+                    <TurnstileWidget
+                      onVerify={handleTurnstileVerify}
+                      onExpire={handleTurnstileExpire}
+                      onError={handleTurnstileError}
+                      theme="auto"
+                      size="normal"
+                    />
+                    {/* Status indicator */}
+                    <div className="mt-2 flex items-center justify-center gap-1.5 text-xs">
+                      {turnstileError ? (
+                        <span className="flex items-center gap-1 text-destructive">
+                          <ShieldAlert className="h-3 w-3" /> CAPTCHA gagal dimuat. Refresh halaman.
+                        </span>
+                      ) : turnstileVerified ? (
+                        <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                          <Check className="h-3 w-3" /> Verifikasi berhasil
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">Selesaikan verifikasi di atas</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 {error && (
                   <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3">
                     <p className="text-sm text-destructive">{error}</p>
                   </div>
                 )}
-                <Button type="submit" className="w-full" disabled={loading}>
+
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={loading || !turnstileVerified}
+                >
                   {loading
                     ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Memverifikasi…</>
-                    : "Login"}
+                    : !turnstileVerified
+                      ? <><ShieldAlert className="mr-2 h-4 w-4" />Selesaikan CAPTCHA</>
+                      : "Login"}
                 </Button>
               </form>
               <p className="mt-4 text-center text-sm text-muted-foreground">
@@ -266,7 +372,7 @@ function LoginForm() {
           </Card>
         )}
 
-        {/* STEP 2: OTP Login */}
+        {/* ── STEP 2: OTP Login ── */}
         {step === "otp" && (
           <Card className="border-border shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-300">
             <CardHeader className="pb-2">
@@ -314,7 +420,8 @@ function LoginForm() {
                   : <><ShieldCheck className="mr-2 h-4 w-4" />Konfirmasi Login</>}
               </Button>
               <div className="flex items-center justify-between text-sm">
-                <button type="button" onClick={() => { setStep("form"); setOtp(""); setOtpError(""); }}
+                <button type="button"
+                  onClick={() => { setStep("form"); setOtp(""); setOtpError(""); }}
                   className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
                   <ArrowLeft className="h-3.5 w-3.5" /> Kembali
                 </button>
@@ -328,7 +435,7 @@ function LoginForm() {
           </Card>
         )}
 
-        {/* STEP 3: Reset - masukkan username */}
+        {/* ── STEP 3: Reset — masukkan username ── */}
         {step === "reset_request" && (
           <Card className="border-border shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-300">
             <CardHeader className="pb-4">
@@ -363,7 +470,8 @@ function LoginForm() {
                     : <><Mail className="mr-2 h-4 w-4" />Kirim Kode Verifikasi</>}
                 </Button>
               </form>
-              <button type="button" onClick={() => { setStep("form"); setResetError(""); }}
+              <button type="button"
+                onClick={() => { setStep("form"); setResetError(""); }}
                 className="mt-4 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
                 <ArrowLeft className="h-3.5 w-3.5" /> Kembali ke Login
               </button>
@@ -371,7 +479,7 @@ function LoginForm() {
           </Card>
         )}
 
-        {/* STEP 4: Reset - verifikasi OTP */}
+        {/* ── STEP 4: Reset — verifikasi OTP ── */}
         {step === "reset_otp" && (
           <Card className="border-border shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-300">
             <CardHeader className="pb-2">
@@ -413,13 +521,15 @@ function LoginForm() {
                   <p className="text-sm text-destructive text-center">{resetError}</p>
                 </div>
               )}
-              <Button className="w-full h-11 bg-amber-500 hover:bg-amber-600 text-white" onClick={handleResetOtp} disabled={resetOtp.length !== 6 || resetLoading}>
+              <Button className="w-full h-11 bg-amber-500 hover:bg-amber-600 text-white"
+                onClick={handleResetOtp} disabled={resetOtp.length !== 6 || resetLoading}>
                 {resetLoading
                   ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Memverifikasi…</>
                   : <><ShieldCheck className="mr-2 h-4 w-4" />Verifikasi Kode</>}
               </Button>
               <div className="flex items-center justify-between text-sm">
-                <button type="button" onClick={() => { setStep("reset_request"); setResetOtp(""); setResetError(""); }}
+                <button type="button"
+                  onClick={() => { setStep("reset_request"); setResetOtp(""); setResetError(""); }}
                   className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
                   <ArrowLeft className="h-3.5 w-3.5" /> Kembali
                 </button>
@@ -433,7 +543,7 @@ function LoginForm() {
           </Card>
         )}
 
-        {/* STEP 5: Reset - input password baru */}
+        {/* ── STEP 5: Reset — password baru ── */}
         {step === "reset_newpass" && (
           <Card className="border-border shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-300">
             <CardHeader className="pb-4">
@@ -487,7 +597,6 @@ function LoginForm() {
         <p className="text-center text-xs text-muted-foreground">
           <Link href="/" className="hover:underline">← Kembali ke Snaptok</Link>
         </p>
-        {/* TOS: show both TikTok and Douyin */}
         <p className="text-center text-xs text-muted-foreground/60 mt-2">
           Dengan login, kamu menyetujui{" "}
           <Link href="/privacy" className="text-primary/70 hover:text-primary hover:underline">Kebijakan Privasi</Link>

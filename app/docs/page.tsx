@@ -535,10 +535,10 @@ console.log(data.download.images);      // Array foto (jika slideshow, bukan nul
       "author": "Nama Artis"
     },
     "download": {
-      "video_hd": "/api/v3/proxy?url=...&token=...",
-      "video_sd": "/api/v3/proxy?url=...&token=...",
-      "video_watermark": "/api/v3/proxy?url=...&token=...",
-      "audio": "/api/v3/proxy?url=...&token=...",
+      "video_hd": "https://api.snaptok.my.id//api/v3/proxy?url=...&token=...",
+      "video_sd": "https://api.snaptok.my.id//api/v3/proxy?url=...&token=...",
+      "video_watermark": "https://api.snaptok.my.id//api/v3/proxy?url=...&token=...",
+      "audio": "https://api.snaptok.my.id//api/v3/proxy?url=...&token=...",
       "images": null
     }
   }
@@ -569,7 +569,7 @@ console.log(data.download.images);      // Array foto (jika slideshow, bukan nul
       "video_hd": null,
       "video_sd": null,
       "video_watermark": null,
-      "audio": "/api/v3/proxy?url=...&token=...",
+      "audio": "https://api.snaptok.my.id/api/v3/proxy?url=...&token=...",
       "images": [
         "https://p16-sign.tiktokcdn-us.com/foto1.jpg",
         "https://p16-sign.tiktokcdn-us.com/foto2.jpg",
@@ -622,9 +622,9 @@ if (json.success) {
     "stats": { "play": 0, "likes": 0, "comment": 0, "share": 0 },
     "music": { "title": "...", "author": "..." },
     "download": {
-      "video": "/api/v3/proxy?url=...&token=...",
+      "video": "https://api.snaptok.my.id//api/v3/proxy?url=...&token=...",
       "video_hd": "/api/v3/proxy?url=...&token=...",
-      "audio": "/api/v3/proxy?url=...&token=...",
+      "audio": "https://api.snaptok.my.id//api/v3/proxy?url=...&token=...",
       "images": null
     }
   }
@@ -1419,7 +1419,7 @@ func main() {
                     badgeColor: "",
                     changes: [
                       { type: "new",   text: "Autentikasi API key wajib. Format snp-xxx." },
-                      { type: "new",   text: "Proxy endpoint /api/v3/proxy untuk streaming file." },
+                      { type: "new",   text: "Proxy endpoint https://api.snaptok.my.id//api/v3/proxy untuk streaming file." },
                       { type: "new",   text: "Support Douyin — endpoint yang sama, tambah platform=douyin." },
                       { type: "imp",   text: "Response structure lebih konsisten dengan field author dan stats lengkap." },
                       { type: "break", text: "Endpoint v2 deprecated. Semua request harus ke /api/v3/." },

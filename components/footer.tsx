@@ -103,7 +103,7 @@ export function Footer() {
             <strong className="text-primary-foreground/70 inline-flex items-center gap-1">
               <FontAwesomeIcon icon={faCircleInfo} className="w-3" /> Disclaimer:
             </strong>{" "}
-            {t(tr.footer.disclaimer_tiktok, lang)}
+            {t(tr.footer.disclaimer, lang)}
           </div>
           <p className="text-xs text-primary-foreground/40">
             &copy; {new Date().getFullYear()} Snaptok. {t(tr.footer.rights, lang)}

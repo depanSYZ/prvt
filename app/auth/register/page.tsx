@@ -222,9 +222,8 @@ export default function RegisterPage() {
                     Dengan mendaftar, kamu menyetujui{" "}
                     <Link href="/privacy" className="text-primary font-medium hover:underline">Kebijakan Privasi</Link>
                     {", "}
-                    <Link href="/guide" className="text-primary font-medium hover:underline">Syarat & Ketentuan TikTok</Link>
-                    {" "}dan{" "}
-                    <Link href="/douyin/privacy" className="text-primary font-medium hover:underline">Syarat & Ketentuan Douyin</Link>
+                    <Link href="/terms" className="text-primary font-medium hover:underline">Syarat & Ketentuan</Link>
+                    
                     {" "}layanan Snaptok. Kami tidak menyimpan atau menjual data pribadi kamu.
                   </label>
                 </div>

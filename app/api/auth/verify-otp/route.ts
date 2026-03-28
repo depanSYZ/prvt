@@ -5,6 +5,7 @@ import { writeUserFile, readUserFile } from "@/lib/pterodactyl";
 import { createSession, addToApiKeyIndex, COOKIE_NAME } from "@/lib/auth";
 import { createSessionMeta } from "@/lib/session-store";
 import { sendNewLoginEmail } from "@/lib/email";
+import { COOKIE_OPTIONS } from "@/lib/config";
 import type { User, SessionUser } from "@/lib/auth";
 
 function getClientIP(req: NextRequest): string {
@@ -56,19 +57,26 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ author: "Snaptok", success: false, error: "Gagal menyimpan akun. Coba lagi." }, { status: 500 });
 
       await addToApiKeyIndex(apikey, username);
+
       const emailIndex = (await readUserFile("_email_index.json") as Record<string, string> | null) ?? {};
       emailIndex[record.email] = username;
       await writeUserFile("_email_index.json", emailIndex);
 
-      const sessionUser: SessionUser = { username: user.username, email: user.email, avatar: user.avatar, apikey: user.apikey, plan: user.plan };
+      const sessionUser: SessionUser = {
+        username: user.username, email: user.email,
+        avatar: user.avatar, apikey: user.apikey, plan: user.plan,
+      };
       const sessionToken = await createSession(sessionUser);
+
       await createSessionMeta(sessionToken, {
-        username: user.username, fingerprintHash: body.fingerprintHash ?? "unknown",
-        deviceId: body.deviceId ?? "unknown", ip, userAgent,
+        username: user.username,
+        fingerprintHash: body.fingerprintHash ?? "unknown",
+        deviceId: body.deviceId ?? "unknown",
+        ip, userAgent,
       });
 
       const res = NextResponse.json({ author: "Snaptok", success: true, user: sessionUser });
-      res.cookies.set(COOKIE_NAME, sessionToken, { httpOnly: true, secure: true, sameSite: "lax", maxAge: 60*60*24*30, path: "/" });
+      res.cookies.set(COOKIE_NAME, sessionToken, COOKIE_OPTIONS); // ← pakai COOKIE_OPTIONS
       return res;
     }
 
@@ -83,18 +91,24 @@ export async function POST(req: NextRequest) {
       if (!data)
         return NextResponse.json({ author: "Snaptok", success: false, error: "User tidak ditemukan." }, { status: 400 });
 
-      const sessionUser: SessionUser = { username: data.username, email: data.email, avatar: data.avatar, apikey: data.apikey, plan: data.plan };
+      const sessionUser: SessionUser = {
+        username: data.username, email: data.email,
+        avatar: data.avatar, apikey: data.apikey, plan: data.plan,
+      };
       const sessionToken = await createSession(sessionUser);
+
       await createSessionMeta(sessionToken, {
-        username: data.username, fingerprintHash: body.fingerprintHash ?? "unknown",
-        deviceId: body.deviceId ?? "unknown", ip, userAgent,
+        username: data.username,
+        fingerprintHash: body.fingerprintHash ?? "unknown",
+        deviceId: body.deviceId ?? "unknown",
+        ip, userAgent,
       });
 
-      // Kirim email notifikasi login baru (non-blocking)
+      // Notifikasi email login baru (non-blocking)
       sendNewLoginEmail(data.email, { username: data.username, ip, userAgent, time: timeStr }).catch(() => {});
 
       const res = NextResponse.json({ author: "Snaptok", success: true, user: sessionUser });
-      res.cookies.set(COOKIE_NAME, sessionToken, { httpOnly: true, secure: true, sameSite: "lax", maxAge: 60*60*24*30, path: "/" });
+      res.cookies.set(COOKIE_NAME, sessionToken, COOKIE_OPTIONS); // ← pakai COOKIE_OPTIONS
       return res;
     }
 

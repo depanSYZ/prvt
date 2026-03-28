@@ -5,15 +5,18 @@ import { validateApiKey, incrementRequests, extractApiKey } from "@/lib/apikey";
 function errRes(message: string, status = 400, extra?: object) {
   return NextResponse.json({ author: "Snaptok", success: false, error: message, ...extra }, { status });
 }
+const SITE_BASE  = "https://snaptok.my.id";
+const PROXY_BASE = `${SITE_BASE}/api/v3/proxy`;
+
 function proxy(url: string | null | undefined): string | null {
   if (!url) return null;
-  return `/api/v3/proxy?url=${encodeURIComponent(url)}`;
+  return `${PROXY_BASE}?url=${encodeURIComponent(url)}`;
 }
 
 export async function GET(req: NextRequest) {
   const apikey = extractApiKey(req);
   const auth   = await validateApiKey(apikey);
-  if (!auth.valid) return errRes(auth.error ?? "API key tidak valid.", 401, { docs: "https://www.snaptok.my.id/docs" });
+  if (!auth.valid) return errRes(auth.error ?? "API key tidak valid.", 401, { docs: `https://${new URL(req.url).host}/docs` });
 
   const { searchParams } = new URL(req.url);
   const q      = searchParams.get("q")?.trim();
@@ -21,7 +24,7 @@ export async function GET(req: NextRequest) {
   const cursor = Number(searchParams.get("cursor") ?? 0);
 
   if (!q) return errRes("Parameter 'q' wajib diisi.", 400, {
-    example: "https://www.snaptok.my.id/api/v3/tiktok/search?q=funny+cats&count=20&cursor=0&apikey=snp-xxx",
+    example: `https://${new URL(req.url).host}/api/v3/tiktok/search?q=funny+cats&count=20&cursor=0&apikey=snp-xxx`,
   });
 
   try {

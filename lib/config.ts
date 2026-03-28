@@ -1,14 +1,16 @@
 // lib/config.ts
 // ── Semua konfigurasi aplikasi ada di sini ──────────────────────────────────
-// Ganti nilai di bawah sesuai kebutuhan, tidak perlu .env
+
+// Deteksi environment — true jika berjalan di production
+export const IS_PROD = process.env.NODE_ENV === "production";
 
 export const SMTP = {
   host:   "smtp.gmail.com",
   port:   587,
   secure: false,
   user:   "otp.snaptok@gmail.com",
-  pass:   "wnbe wvhw egll kizo", // Gmail: pakai App Password
-  from:   "Snatok <defandryannn@gmail.com>",
+  pass:   "wnbe wvhw egll kizo", // Gmail App Password
+  from:   "Snaptok <otp.snaptok@gmail.com>",
 };
 
 export const JWT = {
@@ -17,13 +19,20 @@ export const JWT = {
   maxAgeDays: 30,
 };
 
+// ── Cookie options ────────────────────────────────────────────────────────────
+// secure: true  → hanya HTTPS (production)
+// secure: false → HTTP juga boleh (localhost dev)
+export const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure:   IS_PROD,          // ← kunci utama: false di localhost
+  sameSite: "lax" as const,
+  maxAge:   60 * 60 * 24 * 30, // 30 hari
+  path:     "/",
+};
+
 // ── Cloudflare Turnstile ─────────────────────────────────────────────────────
-// Dapatkan key di: https://dash.cloudflare.com/?to=/:account/turnstile
-// Site Key   → taruh di TURNSTILE.siteKey  (dipakai di frontend / widget)
-// Secret Key → taruh di TURNSTILE.secretKey (dipakai di server untuk verify)
 export const TURNSTILE = {
-  siteKey:   "0x4AAAAAABkMd7De4OWpwm4W", // ← ganti dengan Site Key kamu
-  secretKey: "0x4AAAAAABkMd7De4OWpwm4W_SECRET", // ← ganti dengan Secret Key kamu
-  // Jika ingin skip verifikasi saat development, set skipVerify: true
-  skipVerify: false,
+  siteKey:    "0x4AAAAAACKBdWJuFtWnGLAP",
+  secretKey:  "0x4AAAAAACKBdcQAW4QDpF_NXrbYPc6vmOo",
+  skipVerify: !IS_PROD, // ← auto-skip di dev, aktif di production
 };

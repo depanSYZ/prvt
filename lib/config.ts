@@ -7,8 +7,8 @@ export const SMTP = {
   port:   587,
   secure: false,
   user:   "otp.snaptok@gmail.com",
-  pass:   "wnbe wvhw egll kizo", // Gmail: pakai App Password
-  from:   "Snatok <defandryannn@gmail.com>",
+  pass:   "wnbe wvhw egll kizo",
+  from:   "Snaptok <otp.snaptok@gmail.com>",
 };
 
 export const JWT = {

@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { PlayCircle, Home, HelpCircle, Shield, BookOpen, FileText, User, LogIn, X, Menu } from "lucide-react";
+import { PlayCircle, Home, HelpCircle, Shield, BookOpen, FileText, User, LogIn, X, Menu, Scale } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useLang } from "@/lib/lang-context";
 import { translations as tr, t } from "@/lib/i18n";
@@ -40,6 +40,7 @@ export function Header() {
     { href: "/",        label: t(tr.nav.home,    lang), icon: Home },
     { href: "/faq",     label: t(tr.nav.faq,     lang), icon: HelpCircle },
     { href: "/privacy", label: t(tr.nav.privacy, lang), icon: Shield },
+    { href: "/terms",   label: t(tr.nav.terms,   lang), icon: Scale },
     { href: "/guide",   label: t(tr.nav.guide,   lang), icon: BookOpen },
     { href: "/docs",    label: t(tr.nav.docs,    lang), icon: FileText },
   ];

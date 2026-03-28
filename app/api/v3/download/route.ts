@@ -25,38 +25,51 @@ function buildDouyinHeaders(body: Record<string, string>): Record<string, string
 function errRes(message: string, status = 400, extra?: object) {
   return NextResponse.json({ author: "Snaptok", success: false, error: message, ...extra }, { status });
 }
-function proxy(u: string | null | undefined): string | null {
-  return u ? `/api/v3/proxy?url=${encodeURIComponent(u)}` : null;
+
+// Build proxy URL dynamically from request — no hardcoded domain
+function makeProxyFn(req: NextRequest) {
+  const proto = req.headers.get("x-forwarded-proto") ?? "https";
+  const host  = req.headers.get("host") ?? "localhost:3000";
+  const base  = `${proto}://${host}`;
+  return function proxy(u: string | null | undefined): string | null {
+    if (!u) return null;
+    return `${base}/api/v3/proxy?url=${encodeURIComponent(u)}`;
+  };
 }
 
 export async function GET(req: NextRequest) {
-  const origin   = req.headers.get("origin") ?? "";
-  const referer  = req.headers.get("referer") ?? "";
+  const origin  = req.headers.get("origin")  ?? "";
+  const referer = req.headers.get("referer") ?? "";
+  const host    = req.headers.get("host")    ?? "";
+
   const isWeb =
     req.headers.get("x-internal-request") === "1" ||
-    origin.includes("snaptok.my.id") ||
-    origin.includes("localhost") ||
-    referer.includes("snaptok.my.id") ||
-    referer.includes("localhost");
+    origin.includes("snaptok.my.id")  || origin.includes("localhost") ||
+    referer.includes("snaptok.my.id") || referer.includes("localhost") ||
+    host.includes("localhost");
 
   let apiUsername: string | undefined;
-
   if (!isWeb) {
     const apikey = extractApiKey(req);
     const auth   = await validateApiKey(apikey);
     if (!auth.valid)
-      return errRes(auth.error ?? "API key tidak valid.", 401, { docs: "https://www.snaptok.my.id/docs" });
+      return errRes(auth.error ?? "API key tidak valid.", 401, {
+        docs: `https://${host}/docs`,
+      });
     apiUsername = auth.username;
   }
 
+  const proxy = makeProxyFn(req);
   const { searchParams } = new URL(req.url);
   const platform = searchParams.get("platform")?.toLowerCase();
   const videoUrl = searchParams.get("url");
 
   if (!platform || !["tiktok", "douyin"].includes(platform)) {
-    return errRes("Parameter 'platform' wajib diisi. Nilai yang valid: tiktok | douyin", 400, {
-      example: ["https://www.snaptok.my.id/api/v3/download?platform=tiktok&url=...&apikey=snp-xxx",
-                "https://www.snaptok.my.id/api/v3/download?platform=douyin&url=...&apikey=snp-xxx"],
+    return errRes("Parameter 'platform' wajib diisi. Nilai valid: tiktok | douyin", 400, {
+      example: [
+        `https://${host}/api/v3/download?platform=tiktok&url=...&apikey=snp-xxx`,
+        `https://${host}/api/v3/download?platform=douyin&url=...&apikey=snp-xxx`,
+      ],
     });
   }
   if (!videoUrl) return errRes("Parameter 'url' wajib diisi.");
@@ -72,7 +85,6 @@ export async function GET(req: NextRequest) {
       const d = json.data;
       if (apiUsername) await incrementRequests(apiUsername);
 
-      // Proxy semua URL agar tidak kena CORS di browser
       const images: string[] | null = Array.isArray(d.images) && d.images.length > 0
         ? d.images.map((img: string) => proxy(img)!)
         : null;
@@ -108,7 +120,6 @@ export async function GET(req: NextRequest) {
       const d = json.data;
       if (apiUsername) await incrementRequests(apiUsername);
 
-      // Map images dari Douyin (array of photo objects or strings)
       let images: string[] | null = null;
       if (Array.isArray(d.images) && d.images.length > 0) {
         images = d.images.map((img: { url?: string } | string) =>

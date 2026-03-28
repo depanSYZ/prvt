@@ -86,10 +86,19 @@ export default function RegisterPage() {
     if (otp.length !== 6) { setOtpError("Masukkan 6 digit kode."); return; }
     setOtpLoad(true); setOtpError("");
     try {
+      let fingerprintHash = "unknown";
+      let deviceId = "unknown";
+      try {
+        const { collectFingerprint, hashFingerprint } = await import("@/lib/fingerprint");
+        const fp = collectFingerprint();
+        fingerprintHash = await hashFingerprint(fp);
+        deviceId = fp.deviceId;
+      } catch { /* optional */ }
+
       const res  = await fetch("/api/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: otpToken, otp }),
+        body: JSON.stringify({ token: otpToken, otp, fingerprintHash, deviceId }),
       });
       const json = await res.json();
       if (!json.success) { setOtpError(json.error); return; }

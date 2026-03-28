@@ -8,7 +8,7 @@ import {
   PlayCircle, Copy, Check, RefreshCw, LogOut, Loader2,
   Key, User, Mail, Activity, Shield, Camera, Trash2, AlertTriangle,
   Monitor, Smartphone, Globe, Clock, LogOut as LogOutIcon,
-  ShieldCheck, Download, AtSign, TrendingUp, BarChart3, Zap,
+  ShieldCheck, Download, TrendingUp, BarChart3, Zap,
   Send,
 } from "lucide-react";
 import Image from "next/image";
@@ -183,11 +183,6 @@ export default function ProfilePage() {
   const [editPass,    setEditPass]    = useState("");
 
   // Change username
-  const [showUsernameModal,  setShowUsernameModal]  = useState(false);
-  const [newUsername,        setNewUsername]         = useState("");
-  const [usernamePass,       setUsernamePass]        = useState("");
-  const [usernameLoading,    setUsernameLoading]     = useState(false);
-  const [usernameError,      setUsernameError]       = useState("");
 
   // Delete account
   const [showDeleteModal,    setShowDeleteModal]    = useState(false);
@@ -264,19 +259,6 @@ export default function ProfilePage() {
     setTimeout(async () => { await fetch("/api/auth/logout", { method: "POST" }); router.push("/"); router.refresh(); }, 1200);
   };
 
-  const handleChangeUsername = async () => {
-    if (!newUsername || !usernamePass) { setUsernameError("Semua field wajib diisi."); return; }
-    setUsernameLoading(true); setUsernameError("");
-    const res  = await fetch("/api/auth/change-username", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ newUsername, confirmPassword: usernamePass }) });
-    const json = await res.json();
-    if (json.success) {
-      setUser(u => u ? { ...u, username: json.newUsername } : u);
-      setShowUsernameModal(false); setNewUsername(""); setUsernamePass("");
-      addToast(`Username berhasil diubah ke @${json.newUsername}!`, "success");
-    } else { setUsernameError(json.error ?? "Gagal mengubah username."); }
-    setUsernameLoading(false);
-  };
-
   const handleDeleteAccount = async () => {
     if (!deleteConfirmPass) { setDeleteError("Masukkan password konfirmasi."); return; }
     setDeleteLoading(true); setDeleteError("");
@@ -314,41 +296,6 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-muted/30">
       <ToastContainer toasts={toasts} removeToast={removeToast} />
 
-      {/* Change Username Modal */}
-      {showUsernameModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
-          <div className="w-full max-w-md bg-background rounded-2xl shadow-2xl border border-border animate-in fade-in zoom-in duration-200">
-            <div className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <AtSign className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg">Ganti Username</h3>
-                  <p className="text-sm text-muted-foreground">Username saat ini: @{user.username}</p>
-                </div>
-              </div>
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Username Baru</label>
-                  <Input value={newUsername} onChange={e => setNewUsername(e.target.value)} placeholder="min 3 karakter, huruf/angka/_" className="rounded-xl" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Konfirmasi Password</label>
-                  <Input type="password" value={usernamePass} onChange={e => setUsernamePass(e.target.value)} placeholder="Password kamu" className="rounded-xl" />
-                </div>
-                {usernameError && <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3"><p className="text-sm text-destructive">{usernameError}</p></div>}
-              </div>
-            </div>
-            <div className="px-6 pb-6 flex gap-3">
-              <Button variant="outline" className="flex-1 rounded-xl h-11" onClick={() => { setShowUsernameModal(false); setNewUsername(""); setUsernamePass(""); setUsernameError(""); }} disabled={usernameLoading}>Batal</Button>
-              <Button className="flex-1 rounded-xl h-11 gap-2" onClick={handleChangeUsername} disabled={usernameLoading || !newUsername || !usernamePass}>
-                {usernameLoading ? <><Loader2 className="h-4 w-4 animate-spin" />Menyimpan…</> : <><Check className="h-4 w-4" />Simpan</>}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Delete Account Modal */}
       {showDeleteModal && (
@@ -413,10 +360,6 @@ export default function ProfilePage() {
             <div className="flex-1 text-center sm:text-left">
               <div className="flex items-center justify-center sm:justify-start gap-2">
                 <h1 className="text-2xl font-bold">{user.username}</h1>
-                <button onClick={() => { setShowUsernameModal(true); setNewUsername(""); setUsernamePass(""); setUsernameError(""); }}
-                  className="text-muted-foreground hover:text-primary transition-colors" title="Ganti username">
-                  <AtSign className="h-4 w-4" />
-                </button>
               </div>
               <p className="text-muted-foreground text-sm mt-0.5">{user.email}</p>
               <div className="mt-3 flex flex-wrap items-center justify-center sm:justify-start gap-2">
@@ -540,9 +483,6 @@ export default function ProfilePage() {
             <div className="flex items-center gap-3">
               <Button onClick={handleSaveProfile} disabled={saving} className="rounded-xl gap-2">
                 {saving ? <><Loader2 className="h-4 w-4 animate-spin" />Menyimpan…</> : "Simpan Perubahan"}
-              </Button>
-              <Button variant="outline" onClick={() => setShowUsernameModal(true)} className="rounded-xl gap-2">
-                <AtSign className="h-4 w-4" />Ganti Username
               </Button>
             </div>
           </div>

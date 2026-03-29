@@ -4,142 +4,144 @@ import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Copy, Link as LinkIcon, Download, CheckCircle, Smartphone, Monitor, ArrowRight } from "lucide-react";
+import { BookOpen, Copy, Download, CheckCircle, Smartphone, Monitor, ArrowRight, Lightbulb, AlertCircle, Zap } from "lucide-react";
 import Link from "next/link";
 import { useLang } from "@/lib/lang-context";
-import { translations as tr, t, LangCode } from "@/lib/i18n";
+import { LangCode } from "@/lib/i18n";
 
-type StepData = { title: Record<LangCode,string>; desc: Record<LangCode,string> };
+type L = Record<LangCode,string>;
 
-const steps: StepData[] = [
+const heading: L = { en:"How to Use Snaptok", id:"Cara Menggunakan Snaptok", ru:"Как использовать Snaptok", zh:"如何使用 Snaptok", ar:"كيفية استخدام Snaptok" };
+const sub: L    = { en:"Download any supported video in seconds — no account needed for basic use.", id:"Unduh video yang didukung dalam hitungan detik — tidak perlu akun untuk penggunaan dasar.", ru:"Скачайте любое поддерживаемое видео за секунды — аккаунт не нужен.", zh:"几秒内下载任何受支持的视频——基本使用无需账号。", ar:"نزّل أي فيديو مدعوم في ثوانٍ — لا حاجة لحساب للاستخدام الأساسي." };
+
+const steps: { title: L; desc: L; icon: React.ElementType }[] = [
   {
-    title: { en:"Open TikTok App", id:"Buka Aplikasi TikTok", ru:"Откройте TikTok", zh:"打开 TikTok 应用", ar:"افتح تطبيق TikTok" },
-    desc:  { en:"Open TikTok on your phone or website. Find the video you want to download.", id:"Buka aplikasi TikTok di HP atau website. Temukan video yang ingin diunduh.", ru:"Откройте TikTok на телефоне или сайте. Найдите нужное видео.", zh:"在手机或网页上打开 TikTok，找到您想下载的视频。", ar:"افتح TikTok على هاتفك أو الموقع وابحث عن الفيديو." },
+    icon: Smartphone,
+    title: { en:"Open the Video in the App", id:"Buka Video di Aplikasi", ru:"Откройте видео в приложении", zh:"在应用中打开视频", ar:"افتح الفيديو في التطبيق" },
+    desc:  { en:"Open the video platform app or website on any device. Find the video you want to download and open it fully so you can see the share button.", id:"Buka aplikasi platform video atau websitenya di perangkat apapun. Temukan video yang ingin kamu unduh dan buka sepenuhnya sehingga kamu bisa melihat tombol bagikan.", ru:"Откройте приложение или сайт видеоплатформы на любом устройстве. Найдите нужное видео и откройте его полностью.", zh:"在任意设备上打开视频平台的应用或网站。找到您想下载的视频并完整打开，以便看到分享按钮。", ar:"افتح تطبيق منصة الفيديو أو موقعها على أي جهاز. ابحث عن الفيديو الذي تريد تنزيله وافتحه بالكامل." },
   },
   {
-    title: { en:"Copy Video Link", id:"Salin Link Video", ru:"Скопируйте ссылку", zh:"复制视频链接", ar:"انسخ رابط الفيديو" },
-    desc:  { en:'Tap "Share" on the video, then choose "Copy Link".', id:'Klik tombol "Share" lalu pilih "Salin Link".', ru:'Нажмите «Поделиться», затем «Скопировать ссылку».', zh:'点击"分享"按钮，然后选择"复制链接"。', ar:'اضغط "مشاركة" ثم اختر "نسخ الرابط".' },
+    icon: Copy,
+    title: { en:"Copy the Video Link", id:"Salin Link Video", ru:"Скопируйте ссылку", zh:"复制视频链接", ar:"انسخ رابط الفيديو" },
+    desc:  { en:'Tap the Share button (usually an arrow icon), then select "Copy Link" from the options. The full video URL is now in your clipboard, ready to paste.', id:'Ketuk tombol Share (biasanya ikon panah), lalu pilih "Salin Link" dari opsi. URL video lengkap sekarang ada di clipboard-mu, siap untuk ditempel.', ru:'Нажмите кнопку «Поделиться» (обычно иконка стрелки), затем выберите «Скопировать ссылку». Полный URL теперь в буфере обмена.', zh:'点击分享按钮（通常是箭头图标），然后从选项中选择"复制链接"。完整的视频 URL 现在在您的剪贴板中，准备粘贴。', ar:'اضغط زر المشاركة (عادة أيقونة سهم)، ثم اختر "نسخ الرابط". رابط الفيديو الكامل الآن في حافظتك، جاهز للصق.' },
   },
   {
-    title: { en:"Paste the Link", id:"Tempelkan Link", ru:"Вставьте ссылку", zh:"粘贴链接", ar:"الصق الرابط" },
-    desc:  { en:"Come back to Snaptok and paste the link in the input field.", id:"Kembali ke Snaptok dan tempelkan link di kolom input.", ru:"Вернитесь на Snaptok и вставьте ссылку в поле ввода.", zh:"回到 Snaptok，将链接粘贴到输入框。", ar:"عد إلى Snaptok والصق الرابط في حقل الإدخال." },
+    icon: Download,
+    title: { en:"Paste on Snaptok & Process", id:"Tempel di Snaptok & Proses", ru:"Вставьте на Snaptok и обработайте", zh:"粘贴到 Snaptok 并处理", ar:"الصق في Snaptok وابدأ المعالجة" },
+    desc:  { en:"Return to Snaptok, click the input field on the homepage, and paste the link (Ctrl+V or long-press Paste). Then click the Download Now button. Snaptok will fetch the video data in just a second or two.", id:"Kembali ke Snaptok, klik kolom input di halaman utama, dan tempel link (Ctrl+V atau tekan lama Tempel). Lalu klik tombol Unduh Sekarang. Snaptok akan mengambil data video hanya dalam satu atau dua detik.", ru:"Вернитесь на Snaptok, нажмите на поле ввода, вставьте ссылку (Ctrl+V). Затем нажмите «Скачать». Snaptok получит данные видео за секунду-две.", zh:"返回 Snaptok，点击主页上的输入框，粘贴链接（Ctrl+V 或长按粘贴）。然后点击立即下载按钮。Snaptok 将在一两秒内获取视频数据。", ar:"عد إلى Snaptok، انقر على حقل الإدخال في الصفحة الرئيسية، والصق الرابط. ثم اضغط تنزيل الآن. سيجلب Snaptok بيانات الفيديو في ثانية أو ثانيتين." },
   },
   {
-    title: { en:"Download", id:"Unduh Video", ru:"Скачайте", zh:"下载视频", ar:"حمّل الفيديو" },
-    desc:  { en:'Click "Download Now" and choose your format (HD, MP3, or Image).', id:'Klik "Unduh Sekarang" dan pilih format (Video HD, MP3, atau Gambar).', ru:'Нажмите «Скачать» и выберите формат (HD, MP3 или картинку).', zh:'点击"立即下载"，选择格式（HD、MP3 或图片）。', ar:'اضغط "تنزيل الآن" واختر الصيغة (HD أو MP3 أو صورة).' },
+    icon: Zap,
+    title: { en:"Choose Your Format", id:"Pilih Format", ru:"Выберите формат", zh:"选择格式", ar:"اختر الصيغة" },
+    desc:  { en:"A download panel appears with all available formats. Pick what you need: HD video (no watermark), SD video, original (with watermark), MP3 audio only, or individual images if the video is a slideshow. Each option shows the file type clearly.", id:"Panel unduhan muncul dengan semua format yang tersedia. Pilih apa yang kamu butuhkan: video HD (tanpa watermark), video SD, asli (dengan watermark), hanya audio MP3, atau gambar individual jika videonya adalah slideshow. Setiap opsi menampilkan jenis file dengan jelas.", ru:"Появится панель загрузки со всеми доступными форматами. Выберите нужный: HD-видео (без знака), SD-видео, оригинал (со знаком), только MP3 или отдельные изображения.", zh:"下载面板出现，显示所有可用格式。选择您需要的：HD 视频（无水印）、SD 视频、原始（有水印）、仅 MP3 音频，或幻灯片的单张图片。", ar:"تظهر لوحة التنزيل بجميع الصيغ المتاحة. اختر ما تحتاجه: فيديو HD (بدون علامة)، SD، أصلي (مع علامة)، MP3 فقط، أو صور فردية." },
   },
   {
-    title: { en:"Done!", id:"Selesai!", ru:"Готово!", zh:"完成！", ar:"انتهى!" },
-    desc:  { en:"Your watermark-free video is downloaded. Enjoy!", id:"Video tanpa watermark sudah terunduh. Nikmati!", ru:"Видео без водяного знака загружено. Наслаждайтесь!", zh:"无水印视频已下载完成，尽情享用！", ar:"تم تنزيل الفيديو بدون علامة مائية. استمتع!" },
+    icon: CheckCircle,
+    title: { en:"Download & Enjoy", id:"Unduh & Nikmati", ru:"Скачайте и наслаждайтесь", zh:"下载并享用", ar:"نزّل واستمتع" },
+    desc:  { en:"Click the button next to your chosen format. The file downloads directly to your device — no extra apps, no redirects, no waiting. Your file is saved to your Downloads folder and ready to use, share, or archive.", id:"Klik tombol di sebelah format pilihanmu. File langsung terunduh ke perangkatmu — tidak ada aplikasi tambahan, tidak ada redirect, tidak ada penantian. Filemu tersimpan di folder Unduhan dan siap digunakan, dibagikan, atau diarsipkan.", ru:"Нажмите кнопку рядом с выбранным форматом. Файл скачивается напрямую — без лишних приложений, перенаправлений и ожидания.", zh:"点击所选格式旁边的按钮。文件直接下载到您的设备——无需额外应用，无重定向，无等待。", ar:"اضغط الزر بجانب الصيغة المختارة. يُنزَّل الملف مباشرةً على جهازك — بدون تطبيقات إضافية أو إعادة توجيه أو انتظار." },
   },
 ];
 
-const tips: { title: Record<LangCode,string>; desc: Record<LangCode,string> }[] = [
+const tips: { title: L; desc: L; icon: React.ElementType }[] = [
   {
-    title: { en:"Use Valid Links", id:"Pastikan Link Valid", ru:"Используйте правильные ссылки", zh:"使用有效链接", ar:"استخدم روابط صالحة" },
-    desc:  { en:"Use links directly from TikTok. Links copied from other platforms may not work.", id:"Gunakan link langsung dari TikTok. Link dari platform lain mungkin tidak berfungsi.", ru:"Используйте ссылки непосредственно из TikTok.", zh:"使用直接来自 TikTok 的链接，其他平台的链接可能无效。", ar:"استخدم الروابط مباشرةً من TikTok. الروابط من منصات أخرى قد لا تعمل." },
+    icon: Lightbulb,
+    title: { en:"Always Use the Full URL", id:"Selalu Gunakan URL Lengkap", ru:"Всегда используйте полный URL", zh:"始终使用完整 URL", ar:"استخدم دائماً الرابط الكامل" },
+    desc:  { en:"Make sure you copy the complete link, not just a partial one. Short-form links (like share links or stories) may work differently — if in doubt, open the video in a browser and copy from the address bar.", id:"Pastikan kamu menyalin link lengkap, bukan hanya sebagian. Link berbentuk pendek (seperti link berbagi atau stories) mungkin bekerja berbeda — jika ragu, buka video di browser dan salin dari address bar.", ru:"Убедитесь, что копируете полную ссылку. Короткие ссылки могут работать иначе — откройте видео в браузере и скопируйте из адресной строки.", zh:"确保复制完整链接，而不仅仅是部分链接。短链接（如分享链接或故事）可能工作方式不同——如有疑问，在浏览器中打开视频并从地址栏复制。", ar:"تأكد من نسخ الرابط الكامل. الروابط القصيرة قد تعمل بشكل مختلف — عند الشك، افتح الفيديو في متصفح وانسخ من شريط العنوان." },
   },
   {
-    title: { en:"Stable Connection", id:"Koneksi Stabil", ru:"Стабильное соединение", zh:"稳定的网络连接", ar:"اتصال مستقر" },
-    desc:  { en:"A stable internet connection ensures smooth downloads.", id:"Koneksi internet stabil memastikan proses download yang lancar.", ru:"Стабильное соединение обеспечивает плавную загрузку.", zh:"稳定的网络连接确保流畅下载。", ar:"الاتصال المستقر يضمن تنزيلاً سلساً." },
+    icon: Monitor,
+    title: { en:"HD Quality Downloads", id:"Unduhan Kualitas HD", ru:"HD-загрузки", zh:"高清质量下载", ar:"تنزيلات بجودة HD" },
+    desc:  { en:"Always choose the HD no-watermark option for the best viewing experience. The file size will be larger, but quality is significantly better — especially noticeable on large screens or when sharing the video further.", id:"Selalu pilih opsi HD tanpa watermark untuk pengalaman menonton terbaik. Ukuran file akan lebih besar, tapi kualitasnya jauh lebih baik — terutama terlihat di layar besar atau saat berbagi video lebih lanjut.", ru:"Всегда выбирайте HD без знака для лучшего качества. Размер файла будет больше, но качество значительно выше.", zh:"始终选择无水印 HD 选项以获得最佳观看体验。文件大小会更大，但质量明显更好——在大屏幕上或进一步分享时尤为明显。", ar:"اختر دائماً خيار HD بدون علامة مائية للحصول على أفضل تجربة مشاهدة. حجم الملف سيكون أكبر، لكن الجودة أفضل بكثير." },
   },
   {
-    title: { en:"Public Videos Only", id:"Video Publik", ru:"Только публичные видео", zh:"仅限公开视频", ar:"الفيديوهات العامة فقط" },
-    desc:  { en:"Only public videos can be downloaded. Private videos are not accessible.", id:"Hanya video publik yang dapat diunduh. Video privat tidak dapat diakses.", ru:"Только публичные видео доступны для скачивания.", zh:"只有公开视频可以下载，私密视频无法访问。", ar:"يمكن تنزيل الفيديوهات العامة فقط. الفيديوهات الخاصة غير متاحة." },
-  },
-  {
-    title: { en:"Respect Copyright", id:"Hormati Hak Cipta", ru:"Уважайте авторские права", zh:"尊重版权", ar:"احترم حقوق النشر" },
-    desc:  { en:"Use downloaded content for personal use only. Always credit the original creator.", id:"Gunakan konten untuk keperluan pribadi. Selalu berikan kredit kepada kreator asli.", ru:"Используйте загруженный контент только в личных целях.", zh:"仅将下载内容用于个人用途，始终向原创作者致谢。", ar:"استخدم المحتوى للأغراض الشخصية فقط واذكر دائماً المبدع الأصلي." },
+    icon: AlertCircle,
+    title: { en:"Private Videos Won't Work", id:"Video Privat Tidak Bisa Diunduh", ru:"Приватные видео не скачаются", zh:"私密视频无法下载", ar:"الفيديوهات الخاصة لن تعمل" },
+    desc:  { en:"Only publicly available videos can be downloaded. If a creator has set their video to private, followers-only, or has deleted it, Snaptok cannot access it. This is by design — we respect privacy settings.", id:"Hanya video yang tersedia publik yang bisa diunduh. Jika kreator telah mengatur videonya ke privat, hanya pengikut, atau telah menghapusnya, Snaptok tidak dapat mengaksesnya. Ini by design — kami menghormati pengaturan privasi.", ru:"Только публичные видео можно скачать. Если видео приватное, для подписчиков или удалено, Snaptok не сможет его получить.", zh:"只能下载公开可用的视频。如果创作者将视频设为私密、仅关注者或已删除，Snaptok 无法访问。这是设计如此——我们尊重隐私设置。", ar:"يمكن تنزيل الفيديوهات العامة فقط. إذا جعل المنشئ فيديوه خاصاً أو حذفه، لا يمكن لـ Snaptok الوصول إليه." },
   },
 ];
-
-const icons = [Smartphone, Copy, LinkIcon, Download, CheckCircle];
 
 export default function GuidePage() {
   const { lang } = useLang();
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="min-h-screen flex flex-col">
       <Header />
-      <main className="flex-1 py-12 px-4">
-        <div className="container mx-auto max-w-4xl">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center justify-center rounded-full bg-primary/10 p-4 mb-6">
-              <BookOpen className="h-10 w-10 text-primary" />
+      <main className="flex-1">
+        {/* Hero */}
+        <section className="border-b border-border bg-gradient-to-b from-primary/5 to-transparent py-16">
+          <div className="container mx-auto max-w-3xl px-4 text-center">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 mb-5">
+              <BookOpen className="h-7 w-7 text-primary" />
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-4">{t(tr.guide_page.title, lang)}</h1>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">{t(tr.guide_page.subtitle_tiktok, lang)}</p>
+            <h1 className="text-3xl font-bold mb-3">{heading[lang] ?? heading.en}</h1>
+            <p className="text-muted-foreground text-lg">{sub[lang] ?? sub.en}</p>
           </div>
-          <div className="space-y-6 mb-16">
+        </section>
+
+        {/* Steps */}
+        <section className="py-16 container mx-auto max-w-3xl px-4">
+          <div className="space-y-4">
             {steps.map((step, i) => {
-              const Icon = icons[i];
+              const Icon = step.icon;
               return (
-                <Card key={i} className="border-border overflow-hidden transition-all hover:shadow-md">
-                  <CardContent className="p-0">
-                    <div className="flex flex-col md:flex-row">
-                      <div className="flex items-center justify-center bg-primary/5 p-6 md:p-8 md:w-32">
-                        <div className="flex items-center justify-center w-14 h-14 rounded-full bg-primary text-primary-foreground font-bold text-xl">{i+1}</div>
+                <Card key={i} className="border-border shadow-sm">
+                  <CardContent className="p-6 flex gap-5">
+                    <div className="flex-shrink-0 flex flex-col items-center gap-2">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                        <Icon className="h-5 w-5 text-primary" />
                       </div>
-                      <div className="flex-1 p-6">
-                        <div className="flex items-start gap-4">
-                          <div className="hidden sm:flex items-center justify-center rounded-lg bg-muted p-3">
-                            <Icon className="h-6 w-6 text-primary" />
-                          </div>
-                          <div>
-                            <h3 className="text-lg font-semibold mb-2">{(step.title as Record<string,string>)[lang] ?? step.title.en}</h3>
-                            <p className="text-muted-foreground leading-relaxed">{(step.desc as Record<string,string>)[lang] ?? step.desc.en}</p>
-                          </div>
-                        </div>
-                      </div>
+                      <span className="text-xs font-bold text-muted-foreground">{i + 1}</span>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-base mb-1.5">{step.title[lang] ?? step.title.en}</h3>
+                      <p className="text-muted-foreground text-sm leading-relaxed">{step.desc[lang] ?? step.desc.en}</p>
                     </div>
                   </CardContent>
                 </Card>
               );
             })}
           </div>
-          <div className="mb-16">
-            <h2 className="text-2xl font-bold text-center mb-8">{t(tr.guide_page.devices, lang)}</h2>
-            <div className="grid md:grid-cols-2 gap-6">
-              {[
-                { icon: Smartphone, title: { en:"Smartphone & Tablet", id:"Smartphone & Tablet", ru:"Смартфон и планшет", zh:"智能手机和平板", ar:"الهاتف والجهاز اللوحي" }, desc: { en:"Android, iPhone, iPad — all browsers supported", id:"Android, iPhone, iPad — semua browser didukung", ru:"Android, iPhone, iPad — все браузеры", zh:"Android、iPhone、iPad，所有浏览器均支持", ar:"Android وiPhone وiPad — جميع المتصفحات مدعومة" } },
-                { icon: Monitor,    title: { en:"Desktop & Laptop",    id:"Desktop & Laptop",    ru:"ПК и ноутбук",       zh:"桌面和笔记本",     ar:"الكمبيوتر والحاسوب المحمول" }, desc: { en:"Windows, Mac, Linux — Chrome, Firefox, Safari, Edge", id:"Windows, Mac, Linux — Chrome, Firefox, Safari, Edge", ru:"Windows, Mac, Linux — Chrome, Firefox, Safari, Edge", zh:"Windows、Mac、Linux — Chrome、Firefox、Safari、Edge", ar:"Windows وMac وLinux — Chrome وFirefox وSafari وEdge" } },
-              ].map((item, i) => {
-                const Icon = item.icon;
+        </section>
+
+        {/* Tips */}
+        <section className="py-12 border-t border-border bg-muted/30">
+          <div className="container mx-auto max-w-3xl px-4">
+            <h2 className="text-xl font-bold mb-6">
+              {{ en:"Pro Tips", id:"Tips Pro", ru:"Советы", zh:"专业提示", ar:"نصائح احترافية" }[lang] ?? "Pro Tips"}
+            </h2>
+            <div className="grid sm:grid-cols-3 gap-4">
+              {tips.map((tip, i) => {
+                const Icon = tip.icon;
                 return (
-                  <Card key={i} className="border-border">
-                    <CardContent className="flex items-center gap-4 p-6">
-                      <div className="rounded-full bg-primary/10 p-4"><Icon className="h-8 w-8 text-primary" /></div>
-                      <div>
-                        <h3 className="font-semibold">{(item.title as Record<string,string>)[lang] ?? item.title.en}</h3>
-                        <p className="text-sm text-muted-foreground">{(item.desc as Record<string,string>)[lang] ?? item.desc.en}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <div key={i} className="rounded-xl border border-border bg-card p-5">
+                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
+                      <Icon className="h-4 w-4 text-primary" />
+                    </div>
+                    <h3 className="font-semibold text-sm mb-2">{tip.title[lang] ?? tip.title.en}</h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{tip.desc[lang] ?? tip.desc.en}</p>
+                  </div>
                 );
               })}
             </div>
           </div>
-          <div className="mb-16">
-            <h2 className="text-2xl font-bold text-center mb-8">{t(tr.guide_page.tips, lang)}</h2>
-            <div className="grid sm:grid-cols-2 gap-4">
-              {tips.map((tip, i) => (
-                <Card key={i} className="border-border">
-                  <CardContent className="p-5">
-                    <h3 className="font-semibold mb-2">{(tip.title as Record<string,string>)[lang] ?? tip.title.en}</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{(tip.desc as Record<string,string>)[lang] ?? tip.desc.en}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-          <Card className="border-border bg-primary text-primary-foreground">
-            <CardContent className="text-center p-8 md:p-12">
-              <h2 className="text-2xl md:text-3xl font-bold mb-4">{t(tr.guide_page.ready, lang)}</h2>
-              <Button asChild size="lg" variant="secondary" className="font-semibold">
-                <Link href="/">{t(tr.guide_page.start, lang)}<ArrowRight className="ml-2 h-5 w-5" /></Link>
+        </section>
+
+        {/* CTA */}
+        <section className="py-12 border-t border-border">
+          <div className="container mx-auto max-w-3xl px-4 text-center">
+            <h2 className="text-xl font-bold mb-2">
+              {{ en:"Ready to download?", id:"Siap untuk mengunduh?", ru:"Готовы скачать?", zh:"准备好下载了吗？", ar:"مستعد للتنزيل؟" }[lang]}
+            </h2>
+            <p className="text-muted-foreground mb-6">
+              {{ en:"Head to the homepage and paste your first link.", id:"Pergi ke halaman utama dan tempel link pertamamu.", ru:"Перейдите на главную и вставьте первую ссылку.", zh:"前往主页并粘贴您的第一个链接。", ar:"انتقل إلى الصفحة الرئيسية والصق أول رابط." }[lang]}
+            </p>
+            <Link href="/">
+              <Button className="gap-2">
+                {{ en:"Start Downloading", id:"Mulai Mengunduh", ru:"Начать загрузку", zh:"开始下载", ar:"ابدأ التنزيل" }[lang]}
+                <ArrowRight className="h-4 w-4" />
               </Button>
-            </CardContent>
-          </Card>
-        </div>
+            </Link>
+          </div>
+        </section>
       </main>
       <Footer />
     </div>

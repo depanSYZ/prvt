@@ -5,10 +5,9 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { PlayCircle, Loader2, Eye, EyeOff, Mail, ArrowLeft, Check, KeyRound, ShieldCheck, RefreshCw, ShieldAlert } from "lucide-react";
+import { PlayCircle, Loader2, Eye, EyeOff, Mail, ArrowLeft, Check, KeyRound, ShieldCheck, RefreshCw } from "lucide-react";
 import { OTPInput, SlotProps } from "input-otp";
 import { ToastContainer, useToast } from "@/components/toast-notification";
-import { TurnstileWidget, resetTurnstile } from "@/components/turnstile-widget";
 
 function Slot(props: SlotProps) {
   return (
@@ -39,10 +38,6 @@ function Slot(props: SlotProps) {
 
 type Step = "form" | "otp" | "reset_request" | "reset_otp" | "reset_newpass";
 
-// Ambil siteKey dari env — NEXT_PUBLIC_ aman di browser
-// Set NEXT_PUBLIC_TURNSTILE_SITE_KEY di .env.local atau environment variable hosting
-const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
-
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
@@ -53,11 +48,6 @@ function LoginForm() {
   const [showPass, setShowPass] = useState(false);
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState("");
-
-  // Turnstile state
-  const [turnstileToken,    setTurnstileToken]    = useState<string | null>(null);
-  const [turnstileVerified, setTurnstileVerified] = useState(false);
-  const [turnstileError,    setTurnstileError]    = useState(false);
 
   const [step,        setStep]       = useState<Step>("form");
   const [otpToken,    setOtpToken]   = useState("");
@@ -79,24 +69,6 @@ function LoginForm() {
 
   const { toasts, addToast, removeToast } = useToast();
 
-  // ── Turnstile callbacks ───────────────────────────────────────────────────
-  const handleTurnstileVerify = useCallback((token: string) => {
-    setTurnstileToken(token);
-    setTurnstileVerified(true);
-    setTurnstileError(false);
-  }, []);
-
-  const handleTurnstileExpire = useCallback(() => {
-    setTurnstileToken(null);
-    setTurnstileVerified(false);
-  }, []);
-
-  const handleTurnstileError = useCallback(() => {
-    setTurnstileToken(null);
-    setTurnstileVerified(false);
-    setTurnstileError(true);
-  }, []);
-
   const startCountdown = (setter: (v: number) => void) => {
     setter(60);
     const iv = setInterval(() => {
@@ -104,34 +76,10 @@ function LoginForm() {
     }, 1000);
   };
 
-  // ── Verify Turnstile token di server sebelum submit ───────────────────────
-  const verifyTurnstileOnServer = async (): Promise<boolean> => {
-    // Jika siteKey tidak dikonfigurasi, skip verifikasi
-    if (!TURNSTILE_SITE_KEY) return true;
-    if (!turnstileToken) { setError("Selesaikan CAPTCHA terlebih dahulu."); return false; }
-    try {
-      const res  = await fetch("/api/auth/verify-turnstile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: turnstileToken }),
-      });
-      const json = await res.json();
-      if (!json.success) { setError(json.error ?? "Verifikasi CAPTCHA gagal. Coba lagi."); resetTurnstile(); setTurnstileToken(null); setTurnstileVerified(false); return false; }
-      return true;
-    } catch {
-      setError("Gagal memverifikasi CAPTCHA. Coba lagi.");
-      return false;
-    }
-  };
-
   // ── Form submit (step 1: kirim OTP) ──────────────────────────────────────
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-
-    const captchaOk = await verifyTurnstileOnServer();
-    if (!captchaOk) return;
-
     setLoading(true);
     try {
       const res  = await fetch("/api/auth/send-otp", {
@@ -140,7 +88,7 @@ function LoginForm() {
         body: JSON.stringify({ type: "login", username, password }),
       });
       const json = await res.json();
-      if (!json.success) { setError(json.error); resetTurnstile(); setTurnstileToken(null); setTurnstileVerified(false); return; }
+      if (!json.success) { setError(json.error); return; }
       setOtpToken(json.token);
       setMasked(json.maskedEmail);
       setStep("otp");
@@ -153,7 +101,6 @@ function LoginForm() {
     if (otp.length !== 6) { setOtpError("Masukkan 6 digit kode."); return; }
     setOtpLoad(true); setOtpError("");
     try {
-      // Kumpulkan fingerprint browser untuk session tracking
       let fingerprintHash = "unknown";
       let deviceId = "unknown";
       try {
@@ -161,7 +108,7 @@ function LoginForm() {
         const fp = collectFingerprint();
         fingerprintHash = await hashFingerprint(fp);
         deviceId = fp.deviceId;
-      } catch { /* optional, jangan gagalkan login */ }
+      } catch { /* optional */ }
 
       const res  = await fetch("/api/auth/verify-otp", {
         method: "POST",
@@ -325,50 +272,16 @@ function LoginForm() {
                   </div>
                 </div>
 
-                {/* ── Cloudflare Turnstile ── hanya tampil jika siteKey dikonfigurasi */}
-                {!!TURNSTILE_SITE_KEY && <div className="space-y-2">
-                  <div className="rounded-xl border border-border bg-muted/20 p-3">
-                    <TurnstileWidget
-                      siteKey={TURNSTILE_SITE_KEY}
-                      onVerify={handleTurnstileVerify}
-                      onExpire={handleTurnstileExpire}
-                      onError={handleTurnstileError}
-                      theme="auto"
-                      size="normal"
-                    />
-                    {/* Status indicator */}
-                    <div className="mt-2 flex items-center justify-center gap-1.5 text-xs">
-                      {turnstileError ? (
-                        <span className="flex items-center gap-1 text-destructive">
-                          <ShieldAlert className="h-3 w-3" /> CAPTCHA gagal dimuat. Refresh halaman.
-                        </span>
-                      ) : turnstileVerified ? (
-                        <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
-                          <Check className="h-3 w-3" /> Verifikasi berhasil
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">Selesaikan verifikasi di atas</span>
-                      )}
-                    </div>
-                  </div>
-                </div>}
-
                 {error && (
                   <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3">
                     <p className="text-sm text-destructive">{error}</p>
                   </div>
                 )}
 
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={loading || (!!TURNSTILE_SITE_KEY && !turnstileVerified)}
-                >
+                <Button type="submit" className="w-full" disabled={loading}>
                   {loading
                     ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Memverifikasi…</>
-                    : (TURNSTILE_SITE_KEY && !turnstileVerified)
-                      ? <><ShieldAlert className="mr-2 h-4 w-4" />Selesaikan CAPTCHA</>
-                      : "Login"}
+                    : "Login"}
                 </Button>
               </form>
               <p className="mt-4 text-center text-sm text-muted-foreground">
@@ -609,7 +522,6 @@ function LoginForm() {
           <Link href="/privacy" className="text-primary/70 hover:text-primary hover:underline">Kebijakan Privasi</Link>
           {", "}
           <Link href="/terms" className="text-primary/70 hover:text-primary hover:underline">Syarat & Ketentuan</Link>
-          
           {" "}kami.
         </p>
       </div>

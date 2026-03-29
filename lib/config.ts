@@ -31,8 +31,9 @@ export const COOKIE_OPTIONS = {
 };
 
 // ── Cloudflare Turnstile ─────────────────────────────────────────────────────
+// Dinonaktifkan — CAPTCHA dihapus dari login/register
 export const TURNSTILE = {
-  siteKey:    "0x4AAAAAACKBdWJuFtWnGLAP",
-  secretKey:  "0x4AAAAAACKBdcQAW4QDpF_NXrbYPc6vmOo",
-  skipVerify: !IS_PROD, // ← auto-skip di dev, aktif di production
+  siteKey:    "",
+  secretKey:  "",
+  skipVerify: true, // ← selalu skip, CAPTCHA tidak digunakan
 };

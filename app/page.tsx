@@ -6,7 +6,7 @@ import { Stats } from "@/components/stats";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Snaptok — Download TikTok Without Watermark | Free HD & MP3",
+  title: "Snaptok — Download Video Without Watermark | Free HD & MP3",
   description:
     "Snaptok — Download TikTok & Douyin videos without watermark FREE. Save HD videos, MP3 audio, and images in seconds. Fast, safe, no registration required.",
   alternates: { canonical: "https://snaptok.my.id" },

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -53,6 +53,55 @@ function formatRel(iso: string): string {
   return `${dy} hari lalu`;
 }
 
+// ── Skeleton Components ───────────────────────────────────────────────────────
+function SkeletonBox({ className }: { className?: string }) {
+  return <div className={`animate-pulse rounded-lg bg-muted/60 ${className ?? ""}`} />;
+}
+
+function AnalyticsSkeleton() {
+  return (
+    <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center gap-2.5">
+        <SkeletonBox className="w-7 h-7 rounded-lg" />
+        <SkeletonBox className="w-40 h-4" />
+      </div>
+      <div className="p-6 space-y-5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="rounded-xl border border-border bg-muted/10 p-4 space-y-2">
+              <SkeletonBox className="w-20 h-3" />
+              <SkeletonBox className="w-16 h-7" />
+            </div>
+          ))}
+        </div>
+        <SkeletonBox className="w-full h-16 rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
+function SessionsSkeleton() {
+  return (
+    <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center gap-2.5">
+        <SkeletonBox className="w-7 h-7 rounded-lg" />
+        <SkeletonBox className="w-28 h-4" />
+      </div>
+      <div className="divide-y divide-border">
+        {[...Array(2)].map((_, i) => (
+          <div key={i} className="px-6 py-4 flex items-start gap-4">
+            <SkeletonBox className="w-10 h-10 rounded-xl flex-shrink-0" />
+            <div className="flex-1 space-y-2">
+              <SkeletonBox className="w-40 h-4" />
+              <SkeletonBox className="w-56 h-3" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Mini Bar Chart ────────────────────────────────────────────────────────────
 function BarChart({ days }: { days: DayUsage[] }) {
   const last14 = [...Array(14)].map((_, i) => {
@@ -72,7 +121,6 @@ function BarChart({ days }: { days: DayUsage[] }) {
               className={`w-full rounded-sm transition-all ${isToday ? "bg-primary" : "bg-primary/30 group-hover:bg-primary/60"}`}
               style={{ height: `${h}%` }}
             />
-            {/* Tooltip */}
             {d.requests > 0 && (
               <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-popover border border-border rounded-lg px-2 py-1 text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-md z-10">
                 <p className="font-medium">{d.date.slice(5)}</p>
@@ -86,7 +134,101 @@ function BarChart({ days }: { days: DayUsage[] }) {
   );
 }
 
-// ── Active Sessions Component ─────────────────────────────────────────────────
+// ── Analytics Section (lazy loaded) ──────────────────────────────────────────
+function AnalyticsSection({ username }: { username: string }) {
+  const [analytics, setAnalytics] = useState<{ days: DayUsage[]; totalRequests: number; totalSuccess: number; totalErrors: number } | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [sendingSummary, setSendingSummary] = useState(false);
+  const { toasts, addToast, removeToast } = useToast();
+
+  useEffect(() => {
+    fetch("/api/auth/analytics")
+      .then(r => r.json())
+      .then(j => {
+        if (j.success) setAnalytics({ days: j.days, totalRequests: j.totalRequests, totalSuccess: j.totalSuccess, totalErrors: j.totalErrors });
+      })
+      .catch(() => {})
+      .finally(() => setLoaded(true));
+  }, [username]);
+
+  const handleSendWeeklySummary = async () => {
+    setSendingSummary(true);
+    const res  = await fetch("/api/auth/send-weekly-summary", { method: "POST" });
+    const json = await res.json();
+    if (json.success) addToast("Weekly summary dikirim ke email kamu!", "success");
+    else addToast(json.error ?? "Gagal mengirim summary.", "error");
+    setSendingSummary(false);
+  };
+
+  const week7Days = analytics?.days.filter(d => d.date >= new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)) ?? [];
+  const weekTotal = week7Days.reduce((s, d) => s + d.requests, 0);
+  const successRate = analytics && analytics.totalRequests > 0
+    ? Math.round((analytics.totalSuccess / analytics.totalRequests) * 100) : 0;
+
+  if (!loaded) return <AnalyticsSkeleton />;
+
+  return (
+    <>
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="rounded-lg bg-primary/10 border border-primary/20 p-1.5"><BarChart3 className="h-4 w-4 text-primary" /></div>
+            <span className="font-semibold text-sm">Dashboard Penggunaan API</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={handleSendWeeklySummary} disabled={sendingSummary} className="text-xs gap-1.5 text-muted-foreground">
+              {sendingSummary ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}Weekly Email
+            </Button>
+          </div>
+        </div>
+        <div className="p-6 space-y-5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: "Total Request",  value: analytics?.totalRequests ?? 0,  icon: Zap,       color: "text-primary",     bg: "bg-primary/5" },
+              { label: "7 Hari Ini",     value: weekTotal,                       icon: TrendingUp, color: "text-blue-500",    bg: "bg-blue-500/5" },
+              { label: "Berhasil",       value: analytics?.totalSuccess ?? 0,   icon: Check,     color: "text-green-500",   bg: "bg-green-500/5" },
+              { label: "Error",          value: analytics?.totalErrors ?? 0,    icon: AlertTriangle, color: "text-red-500", bg: "bg-red-500/5" },
+            ].map((s, i) => {
+              const Icon = s.icon;
+              return (
+                <div key={i} className={`rounded-xl border border-border ${s.bg} p-4`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Icon className={`h-4 w-4 ${s.color}`} />
+                    <span className="text-xs text-muted-foreground">{s.label}</span>
+                  </div>
+                  <p className={`text-2xl font-bold ${s.color}`}>{s.value.toLocaleString()}</p>
+                </div>
+              );
+            })}
+          </div>
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-2">Request 14 Hari Terakhir</p>
+            {analytics ? <BarChart days={analytics.days} /> : (
+              <div className="h-16 rounded-lg bg-muted/40 flex items-center justify-center">
+                <p className="text-xs text-muted-foreground">Belum ada data analytics</p>
+              </div>
+            )}
+            <div className="flex items-center gap-3 mt-2">
+              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-primary" /><span className="text-xs text-muted-foreground">Hari ini</span></div>
+              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-primary/30" /><span className="text-xs text-muted-foreground">Hari lain</span></div>
+            </div>
+          </div>
+          {analytics && (
+            <div className="flex items-center gap-2 pt-1 border-t border-border">
+              <div className="text-center">
+                <p className="text-xl font-bold text-green-500">{successRate}%</p>
+                <p className="text-xs text-muted-foreground">Success Rate</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Active Sessions (lazy loaded) ─────────────────────────────────────────────
 function ActiveSessions({ onLogoutAll }: { onLogoutAll: () => void }) {
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [loading,  setLoading]  = useState(true);
@@ -129,7 +271,7 @@ function ActiveSessions({ onLogoutAll }: { onLogoutAll: () => void }) {
       </div>
       <div className="divide-y divide-border">
         {loading ? (
-          <div className="p-6 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+          <SessionsSkeleton />
         ) : sessions.length === 0 ? (
           <div className="p-6 text-center text-sm text-muted-foreground">Tidak ada sesi aktif.</div>
         ) : sessions.map((s, i) => {
@@ -182,29 +324,24 @@ export default function ProfilePage() {
   const [editEmail,   setEditEmail]   = useState("");
   const [editPass,    setEditPass]    = useState("");
 
-  // Change username
-
   // Delete account
   const [showDeleteModal,    setShowDeleteModal]    = useState(false);
   const [deleteConfirmPass,  setDeleteConfirmPass]  = useState("");
   const [deleteLoading,      setDeleteLoading]      = useState(false);
   const [deleteError,        setDeleteError]        = useState("");
 
-  // Analytics
-  const [analytics, setAnalytics] = useState<{ days: DayUsage[]; totalRequests: number; totalSuccess: number; totalErrors: number } | null>(null);
-  const [sendingSummary, setSendingSummary] = useState(false);
-
   const { toasts, addToast, removeToast } = useToast();
 
+  // Hanya fetch /me dulu — analytics & sessions lazy
   useEffect(() => {
-    fetch("/api/auth/me").then(r => r.json()).then(j => {
-      if (j.success) { setUser(j.user); setEditEmail(j.user.email); }
-      else router.push("/auth/login");
-    }).finally(() => setLoading(false));
-
-    fetch("/api/auth/analytics").then(r => r.json()).then(j => {
-      if (j.success) setAnalytics({ days: j.days, totalRequests: j.totalRequests, totalSuccess: j.totalSuccess, totalErrors: j.totalErrors });
-    }).catch(() => {});
+    fetch("/api/auth/me")
+      .then(r => r.json())
+      .then(j => {
+        if (j.success) { setUser(j.user); setEditEmail(j.user.email); }
+        else router.push("/auth/login");
+      })
+      .catch(() => router.push("/auth/login"))
+      .finally(() => setLoading(false));
   }, [router]);
 
   const copyKey = () => {
@@ -275,27 +412,33 @@ export default function ProfilePage() {
     addToast("Data kamu sedang diunduh.", "success");
   };
 
-  const handleSendWeeklySummary = async () => {
-    setSendingSummary(true);
-    const res  = await fetch("/api/auth/send-weekly-summary", { method: "POST" });
-    const json = await res.json();
-    if (json.success) addToast("Weekly summary dikirim ke email kamu!", "success");
-    else addToast(json.error ?? "Gagal mengirim summary.", "error");
-    setSendingSummary(false);
-  };
+  // ── Loading State — hanya spinner kecil, bukan full-page block ─────────────
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-muted/30">
+        <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur">
+          <div className="container mx-auto flex h-16 items-center justify-between px-4">
+            <Link href="/" className="flex items-center gap-2 text-xl font-bold">
+              <PlayCircle className="h-7 w-7 text-primary" />
+              <span>Snap<span className="text-muted-foreground">-Tok</span></span>
+            </Link>
+          </div>
+        </header>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center space-y-3">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+            <p className="text-sm text-muted-foreground">Memuat profil…</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!user) return null;
-
-  const week7Days = analytics?.days.filter(d => d.date >= new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)) ?? [];
-  const weekTotal = week7Days.reduce((s, d) => s + d.requests, 0);
-  const successRate = analytics && analytics.totalRequests > 0
-    ? Math.round((analytics.totalSuccess / analytics.totalRequests) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-muted/30">
       <ToastContainer toasts={toasts} removeToast={removeToast} />
-
 
       {/* Delete Account Modal */}
       {showDeleteModal && (
@@ -377,12 +520,6 @@ export default function ProfilePage() {
                 <p className="text-2xl font-bold text-primary">{user.requests.toLocaleString()}</p>
                 <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1"><Activity className="h-3 w-3" />Total Req</p>
               </div>
-              {analytics && (
-                <div className="text-center border-l border-border pl-5">
-                  <p className="text-2xl font-bold text-green-500">{successRate}%</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Success Rate</p>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -390,55 +527,8 @@ export default function ProfilePage() {
 
       <main className="container mx-auto max-w-4xl px-4 py-8 space-y-5">
 
-        {/* ── Analytics Dashboard ── */}
-        <div className="rounded-2xl border border-border bg-card overflow-hidden">
-          <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="rounded-lg bg-primary/10 border border-primary/20 p-1.5"><BarChart3 className="h-4 w-4 text-primary" /></div>
-              <span className="font-semibold text-sm">Dashboard Penggunaan API</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={handleSendWeeklySummary} disabled={sendingSummary} className="text-xs gap-1.5 text-muted-foreground">
-                {sendingSummary ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}Weekly Email
-              </Button>
-            </div>
-          </div>
-          <div className="p-6 space-y-5">
-            {/* Stats grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                { label: "Total Request",  value: analytics?.totalRequests ?? 0,  icon: Zap,       color: "text-primary",     bg: "bg-primary/5" },
-                { label: "7 Hari Ini",     value: weekTotal,                       icon: TrendingUp, color: "text-blue-500",    bg: "bg-blue-500/5" },
-                { label: "Berhasil",       value: analytics?.totalSuccess ?? 0,   icon: Check,     color: "text-green-500",   bg: "bg-green-500/5" },
-                { label: "Error",          value: analytics?.totalErrors ?? 0,    icon: AlertTriangle, color: "text-red-500", bg: "bg-red-500/5" },
-              ].map((s, i) => {
-                const Icon = s.icon;
-                return (
-                  <div key={i} className={`rounded-xl border border-border ${s.bg} p-4`}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Icon className={`h-4 w-4 ${s.color}`} />
-                      <span className="text-xs text-muted-foreground">{s.label}</span>
-                    </div>
-                    <p className={`text-2xl font-bold ${s.color}`}>{s.value.toLocaleString()}</p>
-                  </div>
-                );
-              })}
-            </div>
-            {/* Bar chart */}
-            <div>
-              <p className="text-xs font-medium text-muted-foreground mb-2">Request 14 Hari Terakhir</p>
-              {analytics ? <BarChart days={analytics.days} /> : (
-                <div className="h-16 rounded-lg bg-muted/40 flex items-center justify-center">
-                  <p className="text-xs text-muted-foreground">Belum ada data analytics</p>
-                </div>
-              )}
-              <div className="flex items-center gap-3 mt-2">
-                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-primary" /><span className="text-xs text-muted-foreground">Hari ini</span></div>
-                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-primary/30" /><span className="text-xs text-muted-foreground">Hari lain</span></div>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* ── Analytics Dashboard (lazy) ── */}
+        <AnalyticsSection username={user.username} />
 
         {/* ── API Key ── */}
         <div className="rounded-2xl border border-border bg-card overflow-hidden">
@@ -488,7 +578,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* ── Sesi Aktif ── */}
+        {/* ── Sesi Aktif (lazy) ── */}
         <ActiveSessions onLogoutAll={handleLogout} />
 
         {/* ── Account & Export ── */}
